@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../shared/php/config.php';
+require_once __DIR__ . '/config.php';
 
 $returnUrl = $_GET['return_url'] ?? '';
 $parsedReturnUrl = is_string($returnUrl) ? parse_url($returnUrl) : false;
@@ -21,6 +21,7 @@ if (
     <meta name="robots" content="noindex, nofollow">
     <title>ورود و ثبت‌نام | آموزشگاه فامو</title>
     <?php echo famo_config_script(); ?>
+    <script src="config.js"></script>
     <link rel="stylesheet" href="<?php echo famo_asset('css/output.css', '../shared/css/output.css'); ?>">
     <link rel="stylesheet" href="<?php echo famo_asset('css/tokens.css', '../shared/css/tokens.css'); ?>">
     <link rel="stylesheet" href="assets/css/login.css">

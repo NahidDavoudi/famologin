@@ -1,4 +1,4 @@
-import API from '../../../shared/js/api.js';
+import API from './api.js';
 
 const asset = (path) => {
     const base = (window.APP_CONFIG && window.APP_CONFIG.assetUrl) || '../shared';
