@@ -1,0 +1,65 @@
+@font-face {
+    font-family: "Vazirmatn";
+    src: url("https://assets.famoacademy.ir/fonts/Vazirmatn-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Vazirmatn";
+    src: url("https://assets.famoacademy.ir/fonts/Vazirmatn-SemiBold.ttf") format("truetype");
+    font-weight: 600;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Vazirmatn";
+    src: url("https://assets.famoacademy.ir/fonts/Vazirmatn-Bold.ttf") format("truetype");
+    font-weight: 700;
+    font-display: swap;
+}
+
+.tab-btn.active {
+    color: var(--ds-color-primary-foreground);
+    background: var(--ds-color-primary);
+    box-shadow: var(--ds-shadow-sm);
+}
+
+.login-branding {
+    background: linear-gradient(145deg, var(--ds-color-primary-950), var(--ds-color-primary));
+}
+
+.form-message {
+    margin-bottom: 1rem;
+    border-radius: var(--ds-radius-lg);
+    padding: .75rem 1rem;
+    font-size: var(--ds-text-sm);
+}
+
+.form-message.error {
+    border: 1px solid var(--ds-color-error-500);
+    background: color-mix(in srgb, var(--ds-color-error-500) 10%, transparent);
+    color: var(--ds-color-error-600);
+}
+
+.form-message.success {
+    border: 1px solid var(--ds-color-success-500);
+    background: color-mix(in srgb, var(--ds-color-success-500) 10%, transparent);
+    color: var(--ds-color-success-600);
+}
+
+.input-group.error input,
+.input-group.error select {
+    border-color: var(--ds-color-error-500);
+}
+
+.error-message {
+    display: none;
+    color: var(--ds-color-error-600);
+    font-size: var(--ds-text-xs);
+    margin-top: .35rem;
+}
+
+.input-group.error .error-message {
+    display: block;
+}
