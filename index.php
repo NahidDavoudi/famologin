@@ -21,8 +21,20 @@ if (
     <meta name="robots" content="noindex, nofollow">
     <title>ورود و ثبت‌نام | آموزشگاه فامو</title>
     <?php echo famo_config_script(); ?>
-    <link rel="stylesheet" href="<?php echo famo_asset('css/output.css', '../shared/css/output.css'); ?>">
-    <link rel="stylesheet" href="<?php echo famo_asset('css/tokens.css', '../shared/css/tokens.css'); ?>">
+
+    <!-- Google Fonts: Vazirmatn (CDN in dev, local in prod) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="<?php echo famo_google_fonts(); ?>">
+
+    <!-- Tailwind CSS (CDN in dev, built in prod) -->
+    <?php if (famo_is_dev()): ?>
+        <script src="<?php echo famo_cdn_tailwind(); ?>"></script>
+    <?php else: ?>
+        <link rel="stylesheet" href="<?php echo famo_cdn_tailwind(); ?>">
+    <?php endif; ?>
+
+    <!-- Local styles -->
     <link rel="stylesheet" href="assets/css/login.css">
 </head>
 <body class="min-h-screen bg-background text-slate-900 antialiased">

@@ -120,4 +120,49 @@ if (!function_exists('famo_env')) {
         $json = json_encode($config, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
         return '<script>window.APP_CONFIG = Object.assign(window.APP_CONFIG || {}, ' . $json . '); window.FAMO_ASSET = function (path) { var base = (window.APP_CONFIG && window.APP_CONFIG.assetUrl) || ""; return base.replace(/\\/$/, "") + "/" + String(path).replace(/^\\//, ""); };</script>';
     }
+
+    // CDN helpers for development mode
+    function famo_cdn_lib(string $lib): string
+    {
+        if (famo_is_dev()) {
+            $versions = [
+                'gsap' => '3.14.2',
+                'scrolltrigger' => '3.14.2',
+                'scrolltoplugin' => '3.14.2',
+                'swiper' => '12.1.0',
+                'lucide' => '0.468.0',
+            ];
+            $version = $versions[$lib] ?? 'latest';
+            return "https://unpkg.com/$lib@$version/dist/$lib.min.js";
+        }
+        return famo_asset("js/libs/$lib.min.js", "../shared/js/libs/$lib.min.js");
+    }
+
+    function famo_cdn_css(string $lib): string
+    {
+        if (famo_is_dev()) {
+            $versions = [
+                'swiper' => '12.1.0',
+            ];
+            $version = $versions[$lib] ?? 'latest';
+            return "https://unpkg.com/$lib@$version/dist/$lib.min.css";
+        }
+        return famo_asset("css/libs/$lib.min.css", "../shared/css/libs/$lib.min.css");
+    }
+
+    function famo_cdn_tailwind(): string
+    {
+        if (famo_is_dev()) {
+            return 'https://cdn.tailwindcss.com';
+        }
+        return famo_asset('css/output.css', '../shared/css/output.css');
+    }
+
+    function famo_google_fonts(): string
+    {
+        if (famo_is_dev()) {
+            return 'https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap';
+        }
+        return famo_asset('css/fonts.css', '../shared/css/fonts.css');
+    }
 }
