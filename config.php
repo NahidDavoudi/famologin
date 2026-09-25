@@ -66,35 +66,58 @@ if (!function_exists('famo_env')) {
         return $base === '' ? $fallback : $base . '/' . ltrim($path, '/');
     }
 
-    function famo_asset_base(): ?string
+    function famo_asset_base(): string
     {
-        $default = famo_is_dev() ? '' : 'https://assets.famoacademy.ir';
-        $base = rtrim(famo_env('ASSET_URL', $default), '/');
-        return $base === '' ? null : $base;
+        return rtrim(famo_env('ASSET_URL', 'https://assets.famoacademy.ir'), '/');
     }
 
-    function famo_api_url(): ?string
+    function famo_api_url(): string
     {
-        $default = famo_is_dev() ? 'http://localhost:8080' : 'https://api.famoacademy.ir';
-        $base = rtrim(famo_env('API_URL', $default), '/');
+        $base = rtrim(famo_env('API_URL', 'https://api.famoacademy.ir'), '/');
         return preg_match('#/api/v1$#', $base) ? $base : $base . '/api/v1';
+    }
+
+    function famo_public_url(): string
+    {
+        return rtrim(famo_env('PUBLIC_URL', ''), '/');
+    }
+
+    function famo_admin_url(): string
+    {
+        return rtrim(famo_env('ADMIN_URL', ''), '/');
+    }
+
+    function famo_dashboard_url(): string
+    {
+        return rtrim(famo_env('DASHBOARD_URL', ''), '/');
+    }
+
+    function famo_login_url(): string
+    {
+        return rtrim(famo_env('LOGIN_URL', ''), '/');
     }
 
     function famo_config_script(): string
     {
         $config = [];
         $assetBase = famo_asset_base();
-        if ($assetBase !== null) {
-            $config['assetUrl'] = $assetBase;
-        }
-        $apiUrl = famo_api_url();
-        if ($apiUrl !== null) {
-            $config['apiUrl'] = $apiUrl;
+        $config['assetUrl'] = $assetBase;
+        $config['apiUrl'] = famo_api_url();
+
+        foreach ([
+            'publicUrl' => famo_public_url(),
+            'adminUrl' => famo_admin_url(),
+            'dashboardUrl' => famo_dashboard_url(),
+            'loginUrl' => famo_login_url(),
+        ] as $key => $url) {
+            if ($url !== '') {
+                $config[$key] = $url;
+            }
         }
         if ($config === []) {
             return '';
         }
-        $json = json_encode($config, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        return '<script>window.APP_CONFIG = Object.assign(window.APP_CONFIG || {}, ' . $json . ');</script>';
+        $json = json_encode($config, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+        return '<script>window.APP_CONFIG = Object.assign(window.APP_CONFIG || {}, ' . $json . '); window.FAMO_ASSET = function (path) { var base = (window.APP_CONFIG && window.APP_CONFIG.assetUrl) || ""; return base.replace(/\\/$/, "") + "/" + String(path).replace(/^\\//, ""); };</script>';
     }
 }

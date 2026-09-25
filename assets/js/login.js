@@ -1,7 +1,7 @@
-import API from '../shared/js/api.js';
+const { default: API } = await import(`${window.APP_CONFIG.assetUrl}/js/api.js`);
 
 const asset = (path) => {
-    const base = (window.APP_CONFIG && window.APP_CONFIG.assetUrl) || '../shared';
+    const base = window.APP_CONFIG && window.APP_CONFIG.assetUrl;
     return String(base).replace(/\/$/, '') + '/' + String(path).replace(/^\//, '');
 };
 
@@ -17,17 +17,28 @@ function clearMessages() { errorBox.classList.add('hidden'); successBox.classLis
 function showSuccess(message) { successBox.textContent = message; successBox.classList.remove('hidden'); errorBox.classList.add('hidden'); }
 function setMode(mode) { loginBox.classList.toggle('hidden', mode !== 'login'); registerBox.classList.toggle('hidden', mode !== 'register'); twoFactorBox.classList.toggle('hidden', mode !== '2fa'); clearMessages(); }
 function destination(user) {
-    const roleHome = user.role === 'student' ? '../dashboard/' : '../admin/';
+    const isStudent = user.role === 'student';
+    const roleHome = isStudent
+        ? window.APP_CONFIG?.dashboardUrl
+        : window.APP_CONFIG?.adminUrl;
     const returnUrl = window.FAMO_LOGIN_RETURN_URL;
 
     // A return URL comes from the page that requested authentication. It must
     // not override role routing, otherwise a student can be sent back to the
     // admin guard and bounce between admin and login forever.
     if (returnUrl) {
-        const normalized = returnUrl.replace(/\/+$/, '') || '/';
-        const allowedPanel = user.role === 'student' ? 'dashboard' : 'admin';
-        if (normalized.split('/').includes(allowedPanel)) {
-            return returnUrl;
+        try {
+            const parsed = new URL(returnUrl, window.location.origin);
+            const segments = parsed.pathname.split('/').filter(Boolean);
+            const allowedPanel = isStudent ? 'dashboard' : 'admin';
+            const panelIndex = segments.lastIndexOf(allowedPanel);
+            if (parsed.origin === window.location.origin && panelIndex !== -1) {
+                const panelPath = segments.slice(panelIndex + 1).join('/');
+                const suffix = [panelPath, parsed.search, parsed.hash].filter(Boolean).join('');
+                return `${roleHome}/${suffix}`;
+            }
+        } catch (error) {
+            // Invalid return URLs fall back to the role's configured panel home.
         }
     }
 

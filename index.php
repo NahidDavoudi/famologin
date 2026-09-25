@@ -21,7 +21,6 @@ if (
     <meta name="robots" content="noindex, nofollow">
     <title>ورود و ثبت‌نام | آموزشگاه فامو</title>
     <?php echo famo_config_script(); ?>
-    <script src="config.js"></script>
     <link rel="stylesheet" href="<?php echo famo_asset('css/output.css', '../shared/css/output.css'); ?>">
     <link rel="stylesheet" href="<?php echo famo_asset('css/tokens.css', '../shared/css/tokens.css'); ?>">
     <link rel="stylesheet" href="assets/css/login.css">
@@ -63,7 +62,7 @@ if (
         </div>
 
         <div id="twoFactorContainer" class="hidden"><p id="twoFactorHint" class="mb-4 text-center text-sm leading-7 text-muted-foreground"></p><form id="formTwoFactor" novalidate><div class="input-group mb-4"><label class="mb-2 block text-sm font-medium" for="twoFactorCode">کد تأیید شش رقمی</label><input class="h-12 w-full rounded-xl border border-input bg-surface-muted px-4 text-center text-lg tracking-[.35em] transition focus:border-primary focus:bg-surface" id="twoFactorCode" name="code" type="text" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" required><span class="error-message"></span></div><button class="primary-button inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground transition hover:bg-primary-hover" type="submit"><i data-lucide="shield-check" class="size-5" aria-hidden="true"></i>تأیید و ورود</button><button class="secondary-button mt-2 min-h-11 w-full rounded-xl px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary-light" id="cancelTwoFactor" type="button">بازگشت</button></form></div>
-        <a class="mt-6 block text-center text-sm text-muted-foreground transition hover:text-primary" href="../public/index.php"><i data-lucide="arrow-right" class="ml-1 inline-block size-4 align-middle" aria-hidden="true"></i>بازگشت به صفحه اصلی</a>
+        <a class="mt-6 block text-center text-sm text-muted-foreground transition hover:text-primary" href="<?= htmlspecialchars(famo_public_url() . '/index.php', ENT_QUOTES, 'UTF-8') ?>"><i data-lucide="arrow-right" class="ml-1 inline-block size-4 align-middle" aria-hidden="true"></i>بازگشت به صفحه اصلی</a>
     </section>
     <aside class="login-branding hidden w-full max-w-xl rounded-2xl p-10 text-center text-white shadow-lg lg:grid lg:min-h-[620px] lg:place-content-center lg:gap-5"><img src="<?php echo famo_asset('images/logo.png', '../shared/images/logo.png'); ?>" alt="لوگوی آموزشگاه فامو" class="mx-auto h-20 w-auto"><h2 class="text-3xl font-bold">آینده تحصیلی خود را با فامو بسازید</h2><p class="text-base leading-8 text-white/85">یک حساب واحد برای دسترسی امن به خدمات و پنل‌های فامو.</p></aside>
 </main>

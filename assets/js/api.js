@@ -2,17 +2,14 @@
  * Famo Unified API Client
  * Shared across all frontend applications (Public, Admin, Dashboard, Nobat, Plan)
  *
- * Base URL resolution order:
- *   1. window.APP_CONFIG.apiUrl (set by shared/js/config.js or injected from PHP .env)
- *   2. hostname auto-detection fallback (localhost vs production)
+ * Base URL is injected from the panel's PHP config.php, which reads API_URL
+ * from the panel's .env file.
  *
  * Usage:
  *   import API from './shared/js/api.js';
  *   const courses = await API.get('/public/courses');
  *   await API.login('admin', '1234');
  */
-
-const DEV = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
 function normalizeBase(url) {
     if (!url) return '';
@@ -22,7 +19,10 @@ function normalizeBase(url) {
 }
 
 const CONFIGURED = normalizeBase(window.APP_CONFIG && window.APP_CONFIG.apiUrl);
-const BASE = CONFIGURED || (DEV ? 'http://localhost:8080/api/v1' : 'https://api.famoacademy.ir/api/v1');
+if (!CONFIGURED) {
+    throw new Error('API_URL is missing from the panel runtime configuration.');
+}
+const BASE = CONFIGURED;
 
 const API = {
     base: BASE,
