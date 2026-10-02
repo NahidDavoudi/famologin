@@ -11,6 +11,16 @@
  *   await API.login('admin', '1234');
  */
 
+// ES modules are deferred, so DOMContentLoaded may have fired before their entry code runs.
+// Use onReady() rather than adding DOMContentLoaded listeners directly.
+export function onReady(callback) {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', callback);
+    } else {
+        callback();
+    }
+}
+
 function normalizeBase(url) {
     if (!url) return '';
     const trimmed = String(url).replace(/\/+$/, '');
@@ -23,31 +33,28 @@ if (!CONFIGURED) {
     throw new Error('API_URL is missing from the panel runtime configuration.');
 }
 const BASE = CONFIGURED;
+const COOKIE_AUTH_HEADERS = { 'X-Auth-Mode': 'cookie' };
 
 const API = {
     base: BASE,
 
-    _token: localStorage.getItem('famo_jwt'),
     _pending2FA: null,
+    _authenticated: false,
 
-    get token() { return this._token; },
-
-    set token(val) {
-        this._token = val;
-        if (val) localStorage.setItem('famo_jwt', val);
-        else localStorage.removeItem('famo_jwt');
-    },
-
-    _headers(hasFiles = false) {
+    _headers(hasFiles = false, headers = {}) {
         const h = {};
         if (!hasFiles) h['Content-Type'] = 'application/json';
-        if (this._token) h['Authorization'] = `Bearer ${this._token}`;
-        return h;
+        return { ...h, ...headers };
     },
 
-    async _fetch(method, path, data = null, hasFiles = false) {
+    async _fetch(method, path, data = null, hasFiles = false, headers = {}) {
         const url = this.base + path;
-        const options = { method, headers: this._headers(hasFiles) };
+        const options = {
+            method,
+            headers: this._headers(hasFiles, headers),
+            credentials: 'include',
+            mode: 'cors',
+        };
         if (data !== null) {
             options.body = hasFiles ? data : JSON.stringify(data);
         }
@@ -67,32 +74,32 @@ const API = {
         return json;
     },
 
-    get(path) { return this._fetch('GET', path); },
+    get(path, options = {}) { return this._fetch('GET', path, null, false, options.headers); },
 
-    post(path, data) { return this._fetch('POST', path, data); },
+    post(path, data, options = {}) { return this._fetch('POST', path, data, false, options.headers); },
 
-    put(path, data) { return this._fetch('PUT', path, data); },
+    put(path, data, options = {}) { return this._fetch('PUT', path, data, false, options.headers); },
 
-    del(path) { return this._fetch('DELETE', path); },
+    del(path, options = {}) { return this._fetch('DELETE', path, null, false, options.headers); },
 
-    async upload(path, formData, method = 'POST') {
-        return this._fetch(method, path, formData, true);
+    async upload(path, formData, method = 'POST', options = {}) {
+        return this._fetch(method, path, formData, true, options.headers);
     },
 
     async login(username, password) {
-        const res = await this.post('/auth/login', { username, password });
+        const res = await this.post('/auth/login', { username, password }, { headers: COOKIE_AUTH_HEADERS });
         const data = res.data;
         if (data.requires_2fa) {
             this._pending2FA = { user_id: data.user_id, username: data.username, email_mask: data.email_mask };
             return { requires_2fa: true, email_mask: data.email_mask, username: data.username };
         }
-        this.token = data.token;
+        this._authenticated = true;
         return { user: data.user };
     },
 
     async register(data) {
-        const res = await this.post('/auth/register', data);
-        this.token = res.data.token;
+        const res = await this.post('/auth/register', data, { headers: COOKIE_AUTH_HEADERS });
+        this._authenticated = true;
         return { user: res.data.user };
     },
 
@@ -101,9 +108,9 @@ const API = {
         const res = await this.post('/auth/verify-2fa', {
             user_id: this._pending2FA.user_id,
             code: String(code)
-        });
-        this.token = res.data.token;
+        }, { headers: COOKIE_AUTH_HEADERS });
         this._pending2FA = null;
+        this._authenticated = true;
         return { user: res.data.user };
     },
 
@@ -111,34 +118,40 @@ const API = {
 
     cancel2fa() { this._pending2FA = null; },
 
-    telegramVerify(payload) { return this.post('/auth/telegram/verify', payload); },
+    telegramVerify(payload) { return this.post('/auth/telegram/verify', payload, { headers: COOKIE_AUTH_HEADERS }); },
 
-    telegramRegister(data) { return this.post('/auth/telegram/register', data); },
+    telegramRegister(data) { return this.post('/auth/telegram/register', data, { headers: COOKIE_AUTH_HEADERS }); },
 
-    telegramLink(data) { return this.post('/auth/telegram/link', data); },
+    telegramLink(data) { return this.post('/auth/telegram/link', data, { headers: COOKIE_AUTH_HEADERS }); },
 
-    telegramVerify2fa(data) { return this.post('/auth/telegram/verify-2fa', data); },
+    telegramVerify2fa(data) {
+        return this.post('/auth/telegram/verify-2fa', {
+            ticket: data.ticket,
+            challenge_id: data.challenge_id,
+            code: String(data.code)
+        }, { headers: COOKIE_AUTH_HEADERS });
+    },
 
     async logout() {
         try {
-            if (this._token) await this.post('/auth/logout');
+            await this.post('/auth/logout', null, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
         } catch (e) {
-            // Clear local credentials even if the stateless API is unavailable.
+            // The browser drops the HttpOnly cookie only when the API can clear it.
         } finally {
-            this.token = null;
             this._pending2FA = null;
+            this._authenticated = false;
         }
     },
 
-    isLoggedIn() { return !!this._token; },
+    isLoggedIn() { return this._authenticated; },
 
     async getMe() {
-        if (!this._token) return null;
         try {
             const res = await this.get('/auth/me');
+            this._authenticated = true;
             return res.data;
         } catch (e) {
-            if (e.status === 401) this.token = null;
+            this._authenticated = false;
             return null;
         }
     },

@@ -15,9 +15,14 @@ const telegramLogin = $('#telegramLogin');
 const telegramHintBox = $('#telegramHint');
 const telegramChooser = $('#telegramChooser');
 const telegramLinked = $('#telegramLinked');
+const authTabs = $('#authTabs');
+const telegramInstruction = $('#telegramInstruction');
 
 const TELEGRAM_HINT_TEXT = 'اگر ویجت باز نشد، اتصال به تلگرام/فیلترشکن را بررسی و دوباره تلاش کنید.';
 const RATE_LIMIT_TEXT = 'تعداد تلاش‌ها بیش از حد مجاز است. کمی صبر کنید و دوباره تلاش کنید.';
+const TELEGRAM_SOURCE = new URLSearchParams(window.location.search).get('source') === 'telegram';
+const TELEGRAM_RESET_CODES = ['TELEGRAM_TICKET_INVALID', 'TELEGRAM_AUTH_INVALID', 'TELEGRAM_REPLAY'];
+const TELEGRAM_RESET_TEXT = 'نشست تلگرام منقضی شد. لطفاً دوباره با تلگرام تأیید کنید.';
 
 let telegramTicket = null;
 let telegram2fa = null;
@@ -29,10 +34,31 @@ function friendlyError(error) {
     if (error && (error.code === 'RATE_LIMITED' || error.status === 429)) return RATE_LIMIT_TEXT;
     return (error && error.message) || 'خطایی رخ داد. دوباره تلاش کنید.';
 }
+function setTelegramGate(locked) {
+    if (locked) {
+        authTabs.classList.add('hidden');
+        loginBox.classList.add('hidden');
+        registerBox.classList.add('hidden');
+        twoFactorBox.classList.add('hidden');
+        if (telegramInstruction) telegramInstruction.classList.remove('hidden');
+    } else {
+        authTabs.classList.remove('hidden');
+        if (telegramInstruction) telegramInstruction.classList.add('hidden');
+    }
+}
+function resetTelegramFlow(message) {
+    telegramTicket = null;
+    telegram2fa = null;
+    telegramChooser.classList.add('hidden');
+    telegramLinked.classList.add('hidden');
+    telegramHintBox.classList.add('hidden');
+    if (telegramLogin) telegramLogin.classList.remove('hidden');
+    if (TELEGRAM_SOURCE) setTelegramGate(true); else setMode('login');
+    if (message) showError(message);
+}
 function finishTelegram(data) {
     telegramTicket = null;
     telegram2fa = null;
-    if (data.token) API.token = data.token;
     if (data.bot_redirect_url) { window.location.assign(data.bot_redirect_url); return; }
     showSuccess('اتصال با موفقیت انجام شد. در حال انتقال...');
     window.setTimeout(() => go(data.user), 250);
@@ -49,15 +75,18 @@ function showTelegramLinked(data) {
     telegramLogin.classList.add('hidden');
     telegramHintBox.classList.add('hidden');
     telegramChooser.classList.add('hidden');
+    telegramLinked.classList.remove('hidden');
+    const message = $('#telegramLinkedMessage');
+    const button = $('#telegramLinkedButton');
     if (data.bot_redirect_url) {
-        window.location.assign(data.bot_redirect_url);
-        return;
+        message.textContent = 'این حساب تلگرام قبلاً به فامو متصل شده است. برای بازگشت به تلگرام روی دکمه زیر بزنید.';
+        button.classList.remove('hidden');
+        button.onclick = () => window.location.assign(data.bot_redirect_url);
+    } else {
+        message.textContent = 'این حساب تلگرام قبلاً به فامو متصل شده است. برای بازگشت، از ربات تلگرام استفاده کنید.';
+        button.classList.add('hidden');
+        button.onclick = null;
     }
-    showSuccess('این حساب تلگرام قبلاً به فامو متصل شده است. در حال انتقال...');
-    window.setTimeout(() => {
-        if (data.bot_redirect_url) window.location.assign(data.bot_redirect_url);
-        else go(data.user);
-    }, 250);
 }
 function setMode(mode) {
     loginBox.classList.toggle('hidden', mode !== 'login');
@@ -169,7 +198,11 @@ async function submit(form, action) {
         showSuccess('ورود موفق بود. در حال انتقال...');
         window.setTimeout(() => go(result.user), 250);
     } catch (error) {
-        showError(friendlyError(error));
+        if (TELEGRAM_RESET_CODES.includes(error && error.code)) {
+            resetTelegramFlow(TELEGRAM_RESET_TEXT);
+        } else {
+            showError(friendlyError(error));
+        }
         setButtonLoading(button, false);
     }
 }
@@ -195,7 +228,11 @@ $('#formTwoFactor').addEventListener('submit', async (event) => {
         showSuccess('ورود موفق بود. در حال انتقال...');
         window.setTimeout(() => go(result.user), 250);
     } catch (error) {
-        showError(error.code === '2FA_ERROR' ? 'کد تأیید نامعتبر است.' : friendlyError(error));
+        if (TELEGRAM_RESET_CODES.includes(error && error.code)) {
+            resetTelegramFlow(TELEGRAM_RESET_TEXT);
+        } else {
+            showError(error.code === '2FA_ERROR' ? 'کد تأیید نامعتبر است.' : friendlyError(error));
+        }
         setButtonLoading(button, false);
     }
 });
@@ -214,10 +251,18 @@ window.addEventListener('famo:telegram-auth', async (event) => {
         const data = res.data || res;
         if (data.linked) { showTelegramLinked(data); return; }
         telegramTicket = data.ticket;
+        if (TELEGRAM_SOURCE) {
+            setTelegramGate(false);
+            setMode('login');
+        }
         showTelegramChooser(data.telegram);
     } catch (error) {
-        telegramTicket = null;
-        showError(friendlyError(error));
+        if (TELEGRAM_RESET_CODES.includes(error && error.code)) {
+            resetTelegramFlow(TELEGRAM_RESET_TEXT);
+        } else {
+            telegramTicket = null;
+            showError(friendlyError(error));
+        }
     }
 });
 $('#telegramLoginChoice').addEventListener('click', () => {
@@ -249,4 +294,5 @@ document.querySelectorAll('.input-group input, .input-group select').forEach((in
 document.querySelectorAll('.password-toggle').forEach((button) => button.addEventListener('click', () => { const input = document.getElementById(button.dataset.passwordTarget); const icon = button.querySelector('img'); const visible = input.type === 'password'; input.type = visible ? 'text' : 'password'; icon.src = visible ? asset('svg/eye-open.svg') : asset('svg/eye-closed.svg'); button.setAttribute('aria-label', visible ? 'مخفی کردن رمز عبور' : 'نمایش رمز عبور'); }));
 $('#registerGrade').addEventListener('change', (event) => { const isMiddleSchool = Number(event.target.value) <= 9; $('#fieldGroup').classList.toggle('hidden', isMiddleSchool); $('#registerField').required = !isMiddleSchool; if (isMiddleSchool) $('#registerField').value = 'راهنمایی'; });
 
-API.getMe().then((user) => { if (user) go(user); });
+if (TELEGRAM_SOURCE && telegramLogin) setTelegramGate(true);
+if (!TELEGRAM_SOURCE) API.getMe().then((user) => { if (user) go(user); });

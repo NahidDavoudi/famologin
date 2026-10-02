@@ -16,6 +16,10 @@ if (
 ) {
     $returnUrl = '';
 }
+$telegramBotUsername = famo_env('TELEGRAM_BOT_USERNAME');
+if ($telegramBotUsername === '') {
+    error_log('famo login: TELEGRAM_BOT_USERNAME is not configured; Telegram Login Widget disabled.');
+}
 ?>
 <!doctype html>
 <html lang="fa" dir="rtl">
@@ -38,18 +42,20 @@ if (
             <p class="mt-2 text-sm text-muted-foreground">برای ورود به پنل خود، اطلاعات حساب را وارد کنید.</p>
         </div>
 
+        <?php if ($telegramBotUsername !== ''): ?>
+        <p id="telegramInstruction" class="hidden mb-2 text-center text-sm text-muted-foreground">ابتدا با تلگرام تأیید کن</p>
         <div id="telegramLogin" class="mb-4 flex justify-center">
             <script>
                 window.onTelegramAuth = function (user) { window.dispatchEvent(new CustomEvent('famo:telegram-auth', { detail: user })); };
             </script>
             <script async
                 src="https://telegram.org/js/telegram-widget.js?22"
-                data-telegram-login="<?= htmlspecialchars(famo_env('TELEGRAM_BOT_USERNAME'), ENT_QUOTES, 'UTF-8') ?>"
+                data-telegram-login="<?= htmlspecialchars($telegramBotUsername, ENT_QUOTES, 'UTF-8') ?>"
                 data-size="large"
                 data-onauth="onTelegramAuth(user)"
-                data-request-access="write"
-                data-auth-url="<?= htmlspecialchars(famo_login_url() . '/', ENT_QUOTES, 'UTF-8') ?>"></script>
+                data-request-access="write"></script>
         </div>
+        <?php endif; ?>
         <div id="telegramHint" class="hidden form-message error" role="alert"></div>
 
         <div id="telegramChooser" class="hidden mb-4 rounded-xl border border-border bg-surface-muted p-4">
@@ -67,7 +73,7 @@ if (
             </div>
         </div>
 
-        <div class="mb-6 flex gap-1 rounded-xl bg-surface-muted p-1" role="tablist" aria-label="احراز هویت">
+        <div id="authTabs" class="mb-6 flex gap-1 rounded-xl bg-surface-muted p-1" role="tablist" aria-label="احراز هویت">
             <button class="tab-btn min-h-11 flex-1 rounded-lg px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary" id="loginTab" type="button" role="tab" aria-selected="true">وارد شدن</button>
             <button class="tab-btn min-h-11 flex-1 rounded-lg px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary" id="registerTab" type="button" role="tab" aria-selected="false">ثبت نام</button>
         </div>
@@ -88,7 +94,7 @@ if (
                 <div class="input-group mb-4"><label class="mb-2 block text-sm font-medium" for="registerName">نام و نام خانوادگی</label><div class="relative"><i data-lucide="user-round" class="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden="true"></i><input class="h-12 w-full rounded-xl border border-input bg-surface-muted px-4 pr-11 text-sm transition focus:border-primary focus:bg-surface" id="registerName" name="name" type="text" minlength="3" autocomplete="name" required></div><span class="error-message"></span></div>
                 <div class="input-group mb-4"><label class="mb-2 block text-sm font-medium" for="registerPhone">شماره موبایل</label><div class="relative"><i data-lucide="phone" class="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden="true"></i><input class="h-12 w-full rounded-xl border border-input bg-surface-muted px-4 pr-11 text-sm transition focus:border-primary focus:bg-surface" id="registerPhone" name="phone" type="tel" pattern="09[0-9]{9}" autocomplete="tel" required></div><span class="error-message"></span></div>
                 <div class="input-group mb-4"><label class="mb-2 block text-sm font-medium" for="registerNationalId">کد ملی</label><div class="relative"><i data-lucide="id-card" class="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden="true"></i><input class="h-12 w-full rounded-xl border border-input bg-surface-muted px-4 pr-11 text-sm transition focus:border-primary focus:bg-surface" id="registerNationalId" name="nationalId" type="text" inputmode="numeric" pattern="[0-9]{10}" required></div><span class="error-message"></span></div>
-                <div class="grid gap-4 sm:grid-cols-2"><div class="input-group mb-4"><label class="mb-2 block text-sm font-medium" for="registerGrade">پایه</label><select class="h-12 w-full rounded-xl border border-input bg-surface-muted px-4 text-sm transition focus:border-primary focus:bg-surface" id="registerGrade" name="grade" required><option value="">انتخاب پایه</option><option value="7">هفتم</option><option value="8">هشتم</option><option value="9">نهم</option><option value="10">دهم</option><option value="11">یازدهم</option><option value="12">دوازدهم</option></select><span class="error-message"></span></div><div class="input-group mb-4" id="fieldGroup"><label class="mb-2 block text-sm font-medium" for="registerField">رشته</label><select class="h-12 w-full rounded-xl border border-input bg-surface-muted px-4 text-sm transition focus:border-primary focus:bg-surface" id="registerField" name="field" required><option value="">انتخاب رشته</option><option value="تجربی">تجربی</option><option value="ریاضی">ریاضی</option><option value="انسانی">انسانی<option value="راهنمایی">راهنمایی</option></select><span class="error-message"></span></div></div>
+                <div class="grid gap-4 sm:grid-cols-2"><div class="input-group mb-4"><label class="mb-2 block text-sm font-medium" for="registerGrade">پایه</label><select class="h-12 w-full rounded-xl border border-input bg-surface-muted px-4 text-sm transition focus:border-primary focus:bg-surface" id="registerGrade" name="grade" required><option value="">انتخاب پایه</option><option value="7">هفتم</option><option value="8">هشتم</option><option value="9">نهم</option><option value="10">دهم</option><option value="11">یازدهم</option><option value="12">دوازدهم</option></select><span class="error-message"></span></div><div class="input-group mb-4" id="fieldGroup"><label class="mb-2 block text-sm font-medium" for="registerField">رشته</label><select class="h-12 w-full rounded-xl border border-input bg-surface-muted px-4 text-sm transition focus:border-primary focus:bg-surface" id="registerField" name="field" required><option value="">انتخاب رشته</option><option value="تجربی">تجربی</option><option value="ریاضی">ریاضی</option><option value="انسانی">انسانی</option><option value="راهنمایی">راهنمایی</option></select><span class="error-message"></span></div></div>
                 <div class="input-group mb-4"><label class="mb-2 block text-sm font-medium" for="registerPassword">رمز عبور</label><div class="relative"><i data-lucide="lock-keyhole" class="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden="true"></i><input class="h-12 w-full rounded-xl border border-input bg-surface-muted px-4 pl-14 pr-11 text-sm transition focus:border-primary focus:bg-surface" id="registerPassword" name="password" type="password" minlength="4" autocomplete="new-password" required><button class="password-toggle absolute left-2 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-lg text-primary transition hover:bg-primary-light" type="button" data-password-target="registerPassword" aria-label="نمایش رمز عبور"><img src="<?php echo famo_asset('svg/eye-closed.svg', '../shared/svg/eye-closed.svg'); ?>" alt="" class="size-5"></button></div><span class="error-message"></span></div>
                 <button class="primary-button inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground transition hover:bg-primary-hover disabled:cursor-wait disabled:opacity-60" type="submit" aria-busy="false"><span class="btn-spinner" aria-hidden="true"></span><i data-lucide="user-plus" class="btn-icon size-5" aria-hidden="true"></i><span class="btn-text">ثبت نام</span><span class="btn-loading-text">در حال ثبت نام…</span></button>
             </form>
