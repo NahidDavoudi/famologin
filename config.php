@@ -103,6 +103,7 @@ if (!function_exists('famo_env')) {
         $assetBase = famo_asset_base();
         $config['assetUrl'] = $assetBase;
         $config['apiUrl'] = famo_api_url();
+        $config['telegramBotUsername'] = famo_env('TELEGRAM_BOT_USERNAME');
 
         foreach ([
             'publicUrl' => famo_public_url(),

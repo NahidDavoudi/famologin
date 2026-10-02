@@ -34,6 +34,35 @@ if (
             <p class="mt-2 text-sm text-muted-foreground">برای ورود به پنل خود، اطلاعات حساب را وارد کنید.</p>
         </div>
 
+        <div id="telegramLogin" class="mb-4 flex justify-center">
+            <script async src="https://telegram.org/js/telegram-widget.js"></script>
+            <script>
+                window.onTelegramAuth = function (user) { window.dispatchEvent(new CustomEvent('famo:telegram-auth', { detail: user })); };
+            </script>
+            <script async
+                src="https://telegram.org/js/telegram-widget.js?22"
+                data-telegram-login="<?= htmlspecialchars(famo_env('TELEGRAM_BOT_USERNAME'), ENT_QUOTES, 'UTF-8') ?>"
+                data-size="large"
+                data-onauth="onTelegramAuth(user)"
+                data-request-access="write"></script>
+        </div>
+        <div id="telegramHint" class="hidden form-message error" role="alert"></div>
+
+        <div id="telegramChooser" class="hidden mb-4 rounded-xl border border-border bg-surface-muted p-4">
+            <p id="telegramChooserMessage" class="text-center text-sm leading-7 text-muted-foreground"></p>
+            <div class="mt-3 flex flex-wrap gap-2">
+                <button id="telegramLoginChoice" class="primary-button inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary-hover" type="button">ورود به حساب موجود</button>
+                <button id="telegramRegisterChoice" class="secondary-button inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-border px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary-light" type="button">ثبت‌نام</button>
+            </div>
+        </div>
+
+        <div id="telegramLinked" class="hidden mb-4 rounded-xl border border-border bg-surface-muted p-4">
+            <p id="telegramLinkedMessage" class="text-center text-sm leading-7 text-muted-foreground"></p>
+            <div class="mt-3 flex flex-wrap gap-2">
+                <button id="telegramLinkedButton" class="primary-button inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary-hover" type="button">بازگشت به تلگرام</button>
+            </div>
+        </div>
+
         <div class="mb-6 flex gap-1 rounded-xl bg-surface-muted p-1" role="tablist" aria-label="احراز هویت">
             <button class="tab-btn min-h-11 flex-1 rounded-lg px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary" id="loginTab" type="button" role="tab" aria-selected="true">وارد شدن</button>
             <button class="tab-btn min-h-11 flex-1 rounded-lg px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary" id="registerTab" type="button" role="tab" aria-selected="false">ثبت نام</button>

@@ -11,10 +11,48 @@ const registerBox = $('#registerFormContainer');
 const twoFactorBox = $('#twoFactorContainer');
 const errorBox = $('#formErrorSummary');
 const successBox = $('#formSuccessSummary');
+const telegramLogin = $('#telegramLogin');
+const telegramHintBox = $('#telegramHint');
+const telegramChooser = $('#telegramChooser');
+const telegramLinked = $('#telegramLinked');
+
+const TELEGRAM_HINT_TEXT = 'اگر ویجت باز نشد، اتصال به تلگرام/فیلترشکن را بررسی و دوباره تلاش کنید.';
+const RATE_LIMIT_TEXT = 'تعداد تلاش‌ها بیش از حد مجاز است. کمی صبر کنید و دوباره تلاش کنید.';
+
+let telegramTicket = null;
+let telegram2fa = null;
 
 function showError(message) { errorBox.textContent = message; errorBox.classList.remove('hidden'); successBox.classList.add('hidden'); errorBox.focus(); }
 function clearMessages() { errorBox.classList.add('hidden'); successBox.classList.add('hidden'); }
 function showSuccess(message) { successBox.textContent = message; successBox.classList.remove('hidden'); errorBox.classList.add('hidden'); }
+function friendlyError(error) {
+    if (error && (error.code === 'RATE_LIMITED' || error.status === 429)) return RATE_LIMIT_TEXT;
+    return (error && error.message) || 'خطایی رخ داد. دوباره تلاش کنید.';
+}
+function finishTelegram(data) {
+    telegramTicket = null;
+    telegram2fa = null;
+    if (data.token) API.token = data.token;
+    if (data.bot_redirect_url) { window.location.assign(data.bot_redirect_url); return; }
+    showSuccess('اتصال با موفقیت انجام شد. در حال انتقال...');
+    window.setTimeout(() => go(data.user), 250);
+}
+function showTelegramChooser(telegram) {
+    const name = telegram && (telegram.first_name || telegram.username);
+    $('#telegramChooserMessage').textContent = name
+        ? `حساب تلگرام «${name}» تأیید شد. برای اتصال، یکی از گزینه‌ها را انتخاب کنید.`
+        : 'حساب تلگرام تأیید شد. برای اتصال، یکی از گزینه‌ها را انتخاب کنید.';
+    telegramLinked.classList.add('hidden');
+    telegramChooser.classList.remove('hidden');
+}
+function showTelegramLinked(data) {
+    telegramLogin.classList.add('hidden');
+    telegramHintBox.classList.add('hidden');
+    telegramChooser.classList.add('hidden');
+    $('#telegramLinkedMessage').textContent = 'این حساب تلگرام قبلاً به فامو متصل شده است. برای بازگشت به تلگرام دکمه زیر را بزنید.';
+    $('#telegramLinkedButton').onclick = () => window.location.assign(data.bot_redirect_url);
+    telegramLinked.classList.remove('hidden');
+}
 function setMode(mode) {
     loginBox.classList.toggle('hidden', mode !== 'login');
     registerBox.classList.toggle('hidden', mode !== 'register');
@@ -102,12 +140,30 @@ async function submit(form, action) {
     setButtonLoading(button, true);
     try {
         const data = Object.fromEntries(new FormData(form));
+        if (telegramTicket && action === 'login') {
+            const res = await API.telegramLink({ ticket: telegramTicket, username: data.username, password: data.password });
+            const result = res.data || res;
+            if (result.requires_2fa) {
+                telegram2fa = { ticket: telegramTicket, challenge_id: result.challenge_id };
+                $('#twoFactorHint').textContent = `کد تأیید به ${result.phone_mask} ارسال شد.`;
+                setButtonLoading(button, false);
+                setMode('2fa');
+                return;
+            }
+            finishTelegram(result);
+            return;
+        }
+        if (telegramTicket && action === 'register') {
+            const res = await API.telegramRegister({ ticket: telegramTicket, ...data, grade: Number(data.grade) });
+            finishTelegram(res.data || res);
+            return;
+        }
         const result = action === 'login' ? await API.login(data.username, data.password) : await API.register({ ...data, grade: Number(data.grade) });
         if (result.requires_2fa) { $('#twoFactorHint').textContent = `کد تأیید به ${result.email_mask} ارسال شد.`; setButtonLoading(button, false); setMode('2fa'); return; }
         showSuccess('ورود موفق بود. در حال انتقال...');
         window.setTimeout(() => go(result.user), 250);
     } catch (error) {
-        showError(error.message || 'خطایی رخ داد. دوباره تلاش کنید.');
+        showError(friendlyError(error));
         setButtonLoading(button, false);
     }
 }
@@ -123,15 +179,58 @@ $('#formTwoFactor').addEventListener('submit', async (event) => {
     const button = form.querySelector('button[type="submit"]');
     setButtonLoading(button, true);
     try {
-        const result = await API.verify2fa($('#twoFactorCode').value);
+        const code = $('#twoFactorCode').value;
+        if (telegram2fa) {
+            const res = await API.telegramVerify2fa({ ticket: telegram2fa.ticket, challenge_id: telegram2fa.challenge_id, code });
+            finishTelegram(res.data || res);
+            return;
+        }
+        const result = await API.verify2fa(code);
         showSuccess('ورود موفق بود. در حال انتقال...');
         window.setTimeout(() => go(result.user), 250);
     } catch (error) {
-        showError(error.message || 'کد تأیید نامعتبر است.');
+        showError(error.code === '2FA_ERROR' ? 'کد تأیید نامعتبر است.' : friendlyError(error));
         setButtonLoading(button, false);
     }
 });
-$('#cancelTwoFactor').addEventListener('click', () => { API.cancel2fa(); setMode('login'); });
+$('#cancelTwoFactor').addEventListener('click', () => { API.cancel2fa(); telegram2fa = null; setMode('login'); });
+
+window.addEventListener('famo:telegram-auth', async (event) => {
+    const detail = event.detail;
+    if (!detail || !detail.id) return;
+    clearMessages();
+    telegramChooser.classList.add('hidden');
+    telegramLinked.classList.add('hidden');
+    telegram2fa = null;
+    telegramTicket = null;
+    try {
+        const res = await API.telegramVerify(detail);
+        const data = res.data || res;
+        if (data.linked) { showTelegramLinked(data); return; }
+        telegramTicket = data.ticket;
+        showTelegramChooser(data.telegram);
+    } catch (error) {
+        telegramTicket = null;
+        showError(friendlyError(error));
+    }
+});
+$('#telegramLoginChoice').addEventListener('click', () => {
+    telegramChooser.classList.add('hidden');
+    setMode('login');
+    showSuccess('برای اتصال، اطلاعات حساب موجود خود را وارد کنید.');
+});
+$('#telegramRegisterChoice').addEventListener('click', () => {
+    telegramChooser.classList.add('hidden');
+    setMode('register');
+    showSuccess('برای اتصال، فرم ثبت‌نام را تکمیل کنید.');
+});
+
+window.setTimeout(() => {
+    if (!telegramLogin || telegramLogin.classList.contains('hidden')) return;
+    if (telegramLogin.querySelector('iframe')) return;
+    telegramHintBox.textContent = TELEGRAM_HINT_TEXT;
+    telegramHintBox.classList.remove('hidden');
+}, 5000);
 
 document.querySelectorAll('.input-group input, .input-group select').forEach((input) => {
     const clearWhenValid = () => {

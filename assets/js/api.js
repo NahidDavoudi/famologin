@@ -111,6 +111,14 @@ const API = {
 
     cancel2fa() { this._pending2FA = null; },
 
+    telegramVerify(payload) { return this.post('/auth/telegram/verify', payload); },
+
+    telegramRegister(data) { return this.post('/auth/telegram/register', data); },
+
+    telegramLink(data) { return this.post('/auth/telegram/link', data); },
+
+    telegramVerify2fa(data) { return this.post('/auth/telegram/verify-2fa', data); },
+
     async logout() {
         try {
             if (this._token) await this.post('/auth/logout');
