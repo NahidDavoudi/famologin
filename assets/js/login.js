@@ -1,4 +1,4 @@
-const { default: API } = await import(`${window.APP_CONFIG.assetUrl}/js/api.js`);
+const { default: API } = await import('./api.js');
 
 const asset = (path) => {
     const base = window.APP_CONFIG && window.APP_CONFIG.assetUrl;
@@ -49,9 +49,15 @@ function showTelegramLinked(data) {
     telegramLogin.classList.add('hidden');
     telegramHintBox.classList.add('hidden');
     telegramChooser.classList.add('hidden');
-    $('#telegramLinkedMessage').textContent = 'این حساب تلگرام قبلاً به فامو متصل شده است. برای بازگشت به تلگرام دکمه زیر را بزنید.';
-    $('#telegramLinkedButton').onclick = () => window.location.assign(data.bot_redirect_url);
-    telegramLinked.classList.remove('hidden');
+    if (data.bot_redirect_url) {
+        window.location.assign(data.bot_redirect_url);
+        return;
+    }
+    showSuccess('این حساب تلگرام قبلاً به فامو متصل شده است. در حال انتقال...');
+    window.setTimeout(() => {
+        if (data.bot_redirect_url) window.location.assign(data.bot_redirect_url);
+        else go(data.user);
+    }, 250);
 }
 function setMode(mode) {
     loginBox.classList.toggle('hidden', mode !== 'login');
