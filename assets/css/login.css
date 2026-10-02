@@ -48,18 +48,108 @@
     color: var(--ds-color-success-600);
 }
 
-.input-group.error input,
-.input-group.error select {
+/* Suppress native validation styling (Firefox/ Safari user-invalid glow, etc.).
+   Validation is handled by login.js plus the .input-group.error classes below. */
+.input-group :is(input, select):valid,
+.input-group :is(input, select):invalid {
+    box-shadow: none;
+}
+
+.input-group :is(input, select):user-invalid {
+    box-shadow: none;
+}
+
+.input-group :is(input, select):-moz-ui-invalid {
+    box-shadow: none;
+}
+
+.input-group.error :is(input, select) {
     border-color: var(--ds-color-error-500);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ds-color-error-500) 12%, transparent);
+}
+
+.input-group.error :is(input, select):focus {
+    border-color: var(--ds-color-error-500);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ds-color-error-500) 18%, transparent);
 }
 
 .error-message {
     display: none;
+    align-items: center;
+    gap: .4rem;
+    margin-top: .4rem;
     color: var(--ds-color-error-600);
     font-size: var(--ds-text-xs);
-    margin-top: .35rem;
+    line-height: var(--ds-leading-normal);
+}
+
+.error-message::before {
+    content: "";
+    flex: none;
+    width: .3rem;
+    height: .3rem;
+    border-radius: var(--ds-radius-full);
+    background: currentColor;
+    opacity: .7;
 }
 
 .input-group.error .error-message {
-    display: block;
+    display: flex;
+    animation: famo-error-in var(--ds-duration-fast) var(--ds-ease-standard);
+}
+
+@keyframes famo-error-in {
+    from {
+        opacity: 0;
+        transform: translateY(-2px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Button loading state */
+.btn-spinner,
+.btn-loading-text {
+    display: none;
+}
+
+.btn-spinner {
+    width: 1.15rem;
+    height: 1.15rem;
+    flex: none;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: var(--ds-radius-full);
+    animation: famo-spin .6s linear infinite;
+}
+
+.is-loading .btn-icon,
+.is-loading .btn-text {
+    display: none;
+}
+
+.is-loading .btn-spinner {
+    display: inline-block;
+}
+
+.is-loading .btn-loading-text {
+    display: inline;
+}
+
+@keyframes famo-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .input-group.error .error-message {
+        animation: none;
+    }
+
+    .btn-spinner {
+        animation-duration: 1.6s;
+    }
 }

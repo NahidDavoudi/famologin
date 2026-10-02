@@ -15,7 +15,13 @@ const successBox = $('#formSuccessSummary');
 function showError(message) { errorBox.textContent = message; errorBox.classList.remove('hidden'); successBox.classList.add('hidden'); errorBox.focus(); }
 function clearMessages() { errorBox.classList.add('hidden'); successBox.classList.add('hidden'); }
 function showSuccess(message) { successBox.textContent = message; successBox.classList.remove('hidden'); errorBox.classList.add('hidden'); }
-function setMode(mode) { loginBox.classList.toggle('hidden', mode !== 'login'); registerBox.classList.toggle('hidden', mode !== 'register'); twoFactorBox.classList.toggle('hidden', mode !== '2fa'); clearMessages(); }
+function setMode(mode) {
+    loginBox.classList.toggle('hidden', mode !== 'login');
+    registerBox.classList.toggle('hidden', mode !== 'register');
+    twoFactorBox.classList.toggle('hidden', mode !== '2fa');
+    document.querySelectorAll('#formLogin input, #formLogin select, #formRegister input, #formRegister select, #formTwoFactor input, #formTwoFactor select').forEach((input) => setFieldError(input, null));
+    clearMessages();
+}
 function destination(user) {
     const isStudent = user.role === 'student';
     const roleHome = isStudent
@@ -46,34 +52,95 @@ function destination(user) {
 }
 function go(user) { window.location.assign(destination(user)); }
 
+function setButtonLoading(button, loading) {
+    if (!button) return;
+    button.classList.toggle('is-loading', loading);
+    button.disabled = loading;
+    button.setAttribute('aria-busy', loading ? 'true' : 'false');
+}
+
+function fieldErrorMessage(input) {
+    if (input.validity.valueMissing) return 'این فیلد الزامی است';
+    if (input.validity.tooShort) return `حداقل ${input.minLength} کاراکتر وارد کنید`;
+    if (input.validity.patternMismatch || input.validity.typeMismatch) return 'قالب وارد شده صحیح نیست';
+    return 'مقدار وارد شده صحیح نیست';
+}
+
+function setFieldError(input, message) {
+    const group = input.closest('.input-group');
+    const messageEl = group && group.querySelector('.error-message');
+    if (!group || !messageEl) return;
+    if (message) {
+        if (!messageEl.id) messageEl.id = `${input.id || input.name}Error`;
+        messageEl.textContent = message;
+        group.classList.add('error');
+        input.setAttribute('aria-invalid', 'true');
+        input.setAttribute('aria-describedby', messageEl.id);
+    } else {
+        group.classList.remove('error');
+        input.removeAttribute('aria-invalid');
+        input.removeAttribute('aria-describedby');
+    }
+}
+
 function validate(form) {
     let valid = true;
     form.querySelectorAll('input, select').forEach((input) => {
-        const group = input.closest('.input-group');
-        group.classList.remove('error');
-        if (!input.checkValidity()) { valid = false; group.classList.add('error'); group.querySelector('.error-message').textContent = input.validity.valueMissing ? 'این فیلد الزامی است' : 'مقدار وارد شده صحیح نیست'; }
+        if (input.checkValidity()) {
+            setFieldError(input, null);
+        } else {
+            valid = false;
+            setFieldError(input, fieldErrorMessage(input));
+        }
     });
     return valid;
 }
 
 async function submit(form, action) {
     if (!validate(form)) return;
-    const button = form.querySelector('button[type="submit"]'); button.disabled = true;
+    const button = form.querySelector('button[type="submit"]');
+    setButtonLoading(button, true);
     try {
         const data = Object.fromEntries(new FormData(form));
         const result = action === 'login' ? await API.login(data.username, data.password) : await API.register({ ...data, grade: Number(data.grade) });
-        if (result.requires_2fa) { $('#twoFactorHint').textContent = `کد تأیید به ${result.email_mask} ارسال شد.`; setMode('2fa'); return; }
-        showSuccess('ورود موفق بود. در حال انتقال...'); setTimeout(() => go(result.user), 250);
-    } catch (error) { showError(error.message || 'خطایی رخ داد. دوباره تلاش کنید.'); }
-    finally { button.disabled = false; }
+        if (result.requires_2fa) { $('#twoFactorHint').textContent = `کد تأیید به ${result.email_mask} ارسال شد.`; setButtonLoading(button, false); setMode('2fa'); return; }
+        showSuccess('ورود موفق بود. در حال انتقال...');
+        window.setTimeout(() => go(result.user), 250);
+    } catch (error) {
+        showError(error.message || 'خطایی رخ داد. دوباره تلاش کنید.');
+        setButtonLoading(button, false);
+    }
 }
 
 $('#loginTab').addEventListener('click', () => { setMode('login'); $('#loginTab').classList.add('active'); $('#registerTab').classList.remove('active'); });
 $('#registerTab').addEventListener('click', () => { setMode('register'); $('#registerTab').classList.add('active'); $('#loginTab').classList.remove('active'); });
 $('#formLogin').addEventListener('submit', (event) => { event.preventDefault(); submit(event.currentTarget, 'login'); });
 $('#formRegister').addEventListener('submit', (event) => { event.preventDefault(); submit(event.currentTarget, 'register'); });
-$('#formTwoFactor').addEventListener('submit', async (event) => { event.preventDefault(); if (!validate(event.currentTarget)) return; try { const result = await API.verify2fa($('#twoFactorCode').value); showSuccess('ورود موفق بود. در حال انتقال...'); setTimeout(() => go(result.user), 250); } catch (error) { showError(error.message || 'کد تأیید نامعتبر است.'); } });
+$('#formTwoFactor').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!validate(form)) return;
+    const button = form.querySelector('button[type="submit"]');
+    setButtonLoading(button, true);
+    try {
+        const result = await API.verify2fa($('#twoFactorCode').value);
+        showSuccess('ورود موفق بود. در حال انتقال...');
+        window.setTimeout(() => go(result.user), 250);
+    } catch (error) {
+        showError(error.message || 'کد تأیید نامعتبر است.');
+        setButtonLoading(button, false);
+    }
+});
 $('#cancelTwoFactor').addEventListener('click', () => { API.cancel2fa(); setMode('login'); });
+
+document.querySelectorAll('.input-group input, .input-group select').forEach((input) => {
+    const clearWhenValid = () => {
+        const group = input.closest('.input-group');
+        if (group && group.classList.contains('error') && input.checkValidity()) setFieldError(input, null);
+    };
+    input.addEventListener('input', clearWhenValid);
+    input.addEventListener('change', clearWhenValid);
+});
 document.querySelectorAll('.password-toggle').forEach((button) => button.addEventListener('click', () => { const input = document.getElementById(button.dataset.passwordTarget); const icon = button.querySelector('img'); const visible = input.type === 'password'; input.type = visible ? 'text' : 'password'; icon.src = visible ? asset('svg/eye-open.svg') : asset('svg/eye-closed.svg'); button.setAttribute('aria-label', visible ? 'مخفی کردن رمز عبور' : 'نمایش رمز عبور'); }));
 $('#registerGrade').addEventListener('change', (event) => { const isMiddleSchool = Number(event.target.value) <= 9; $('#fieldGroup').classList.toggle('hidden', isMiddleSchool); $('#registerField').required = !isMiddleSchool; if (isMiddleSchool) $('#registerField').value = 'راهنمایی'; });
 
