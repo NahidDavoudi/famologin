@@ -1,7 +1,11 @@
 <?php
 require_once __DIR__ . '/config.php';
-
-$returnUrl = $_GET['return_url'] ?? '';
+$source = $_GET['source'] ?? '';
+if($source == 'telegram') {
+    $returnUrl = 'https://t.me/NadEdu_bot';
+} else {
+    $returnUrl = $_GET['return_url'] ?? '';
+}
 $parsedReturnUrl = is_string($returnUrl) ? parse_url($returnUrl) : false;
 if (
     !is_string($returnUrl)
@@ -35,7 +39,6 @@ if (
         </div>
 
         <div id="telegramLogin" class="mb-4 flex justify-center">
-            <script async src="https://telegram.org/js/telegram-widget.js"></script>
             <script>
                 window.onTelegramAuth = function (user) { window.dispatchEvent(new CustomEvent('famo:telegram-auth', { detail: user })); };
             </script>
@@ -44,7 +47,8 @@ if (
                 data-telegram-login="<?= htmlspecialchars(famo_env('TELEGRAM_BOT_USERNAME'), ENT_QUOTES, 'UTF-8') ?>"
                 data-size="large"
                 data-onauth="onTelegramAuth(user)"
-                data-request-access="write"></script>
+                data-request-access="write"
+                data-auth-url="<?= htmlspecialchars(famo_login_url() . '/', ENT_QUOTES, 'UTF-8') ?>"></script>
         </div>
         <div id="telegramHint" class="hidden form-message error" role="alert"></div>
 
