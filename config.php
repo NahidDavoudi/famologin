@@ -97,6 +97,11 @@ if (!function_exists('famo_env')) {
         return rtrim(famo_env('LOGIN_URL', ''), '/');
     }
 
+    function famo_plan_url(): string
+    {
+        return rtrim(famo_env('PLAN_URL', ''), '/');
+    }
+
     function famo_config_script(): string
     {
         $config = [];
@@ -110,6 +115,7 @@ if (!function_exists('famo_env')) {
             'adminUrl' => famo_admin_url(),
             'dashboardUrl' => famo_dashboard_url(),
             'loginUrl' => famo_login_url(),
+            'planUrl' => famo_plan_url(),
         ] as $key => $url) {
             if ($url !== '') {
                 $config[$key] = $url;

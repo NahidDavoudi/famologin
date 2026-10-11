@@ -100,21 +100,28 @@ function destination(user) {
     const roleHome = isStudent
         ? window.APP_CONFIG?.dashboardUrl
         : window.APP_CONFIG?.adminUrl;
+
+    // Only these panel segments may be honored from a return URL, so a student
+    // can never be bounced back into an admin-only guard.
+    const panelHomes = isStudent
+        ? { dashboard: window.APP_CONFIG?.dashboardUrl }
+        : { admin: window.APP_CONFIG?.adminUrl, plan: window.APP_CONFIG?.planUrl };
+
     const returnUrl = window.FAMO_LOGIN_RETURN_URL;
 
-    // A return URL comes from the page that requested authentication. It must
-    // not override role routing, otherwise a student can be sent back to the
-    // admin guard and bounce between admin and login forever.
     if (returnUrl) {
         try {
             const parsed = new URL(returnUrl, window.location.origin);
             const segments = parsed.pathname.split('/').filter(Boolean);
-            const allowedPanel = isStudent ? 'dashboard' : 'admin';
-            const panelIndex = segments.lastIndexOf(allowedPanel);
-            if (parsed.origin === window.location.origin && panelIndex !== -1) {
-                const panelPath = segments.slice(panelIndex + 1).join('/');
-                const suffix = [panelPath, parsed.search, parsed.hash].filter(Boolean).join('');
-                return `${roleHome}/${suffix}`;
+            if (parsed.origin === window.location.origin) {
+                for (let i = segments.length - 1; i >= 0; i--) {
+                    const home = panelHomes[segments[i]];
+                    if (home) {
+                        const panelPath = segments.slice(i + 1).join('/');
+                        const suffix = [panelPath, parsed.search, parsed.hash].filter(Boolean).join('');
+                        return `${home}/${suffix}`;
+                    }
+                }
             }
         } catch (error) {
             // Invalid return URLs fall back to the role's configured panel home.
