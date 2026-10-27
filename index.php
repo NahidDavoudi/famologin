@@ -31,6 +31,10 @@ if ($telegramBotUsername === '') {
     <?php echo famo_config_script(); ?>
     <link rel="stylesheet" href="<?php echo famo_asset('css/output.css', '../shared/css/output.css'); ?>">
     <link rel="stylesheet" href="<?php echo famo_asset('css/tokens.css', '../shared/css/tokens.css'); ?>">
+        <!-- Favicon Multi-size -->
+    <link rel="icon" type="image/png" sizes="16x16" href="<?php echo famo_asset('images/favicon-16.png', $base . '../shared/images/favicon-16.png'); ?>">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?php echo famo_asset('images/favicon-32.png', $base . '../shared/images/favicon-32.png'); ?>">
+    <link rel="icon" type="image/png" sizes="96x96" href="<?php echo famo_asset('images/favicon-96.png', $base . '../shared/images/favicon-96.png'); ?>">
     <link rel="stylesheet" href="assets/css/login.css">
 </head>
 <body class="min-h-screen bg-background text-slate-900 antialiased">
