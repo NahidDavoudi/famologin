@@ -1,0 +1,5 @@
+{
+  "name": "Famo Login",
+  "description": "Standalone login and registration portal for Famo Academy with 2FA and Telegram Login Widget support.",
+  "requestFramePermissions": []
+}

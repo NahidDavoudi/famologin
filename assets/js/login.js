@@ -92,6 +92,16 @@ function setMode(mode) {
     loginBox.classList.toggle('hidden', mode !== 'login');
     registerBox.classList.toggle('hidden', mode !== 'register');
     twoFactorBox.classList.toggle('hidden', mode !== '2fa');
+    const loginTab = $('#loginTab');
+    const registerTab = $('#registerTab');
+    if (loginTab) {
+        loginTab.classList.toggle('active', mode === 'login');
+        loginTab.setAttribute('aria-selected', mode === 'login' ? 'true' : 'false');
+    }
+    if (registerTab) {
+        registerTab.classList.toggle('active', mode === 'register');
+        registerTab.setAttribute('aria-selected', mode === 'register' ? 'true' : 'false');
+    }
     document.querySelectorAll('#formLogin input, #formLogin select, #formRegister input, #formRegister select, #formTwoFactor input, #formTwoFactor select').forEach((input) => setFieldError(input, null));
     clearMessages();
 }
