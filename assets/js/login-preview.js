@@ -1,13 +1,13 @@
 import { onReady } from './api.js';
 
 /**
- * Interactive preview harness loaded ONLY on /admin/login/preview or /admin/login?preview=1.
- * Allows visually inspecting and interactively testing all 9 admin login states,
- * error variants, and RTL/LTR direction without live admin credentials.
+ * Interactive preview harness loaded ONLY on /preview, /admin/login/preview, or ?preview=1.
+ * Allows visually inspecting and interactively testing all unified login, register,
+ * 2FA states, error variants, and RTL/LTR direction without live credentials.
  */
 function initPreviewHarness() {
-    const toolbar = document.getElementById('adminPreviewToolbar');
-    const ctrl = window.__FAMO_ADMIN_LOGIN_PREVIEW__;
+    const toolbar = document.getElementById('authPreviewToolbar');
+    const ctrl = window.__FAMO_AUTH_PREVIEW__;
     if (!toolbar || !ctrl) return;
 
     let simulatedChallenge = {
@@ -42,6 +42,9 @@ function initPreviewHarness() {
                 err.code = 'AUTH_ERROR';
                 err.status = 401;
                 throw err;
+            }
+            if (username === 'student') {
+                return { user: { id: 7, username: 'student', role: 'student' } };
             }
             return { ...simulatedChallenge };
         },
@@ -129,15 +132,18 @@ function initPreviewHarness() {
         setActiveButton(stateName);
         switch (stateName) {
             case 'credentials':
-                ctrl.enterCredentialsStep();
+                ctrl.setMode('login');
                 break;
             case 'credentials-loading':
-                ctrl.enterCredentialsStep({ focus: false });
+                ctrl.setMode('login');
                 ctrl.setLoginLoading(true);
                 break;
             case 'credentials-error':
-                ctrl.enterCredentialsStep({ focus: false });
+                ctrl.setMode('login');
                 ctrl.showError('اطلاعات ورود نامعتبر است. نام کاربری و رمز عبور خود را بررسی کنید.');
+                break;
+            case 'register':
+                ctrl.setMode('register');
                 break;
             case 'sms':
                 simulatedChallenge = {
