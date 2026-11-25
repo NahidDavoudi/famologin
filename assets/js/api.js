@@ -59,16 +59,25 @@ const API = {
             options.body = hasFiles ? data : JSON.stringify(data);
         }
         const res = await fetch(url, options);
+        const retryAfterRaw = res.headers ? res.headers.get('Retry-After') : null;
+        const retryAfter = retryAfterRaw && /^\d+$/.test(retryAfterRaw.trim())
+            ? parseInt(retryAfterRaw.trim(), 10)
+            : null;
         const text = await res.text();
         let json;
         try { json = JSON.parse(text); } catch (e) {
-            throw { code: 'PARSE_ERROR', message: 'خطا در پردازش پاسخ سرور' };
+            const parseErr = new Error('خطا در پردازش پاسخ سرور');
+            parseErr.code = 'PARSE_ERROR';
+            parseErr.status = res.status;
+            parseErr.retryAfter = retryAfter;
+            throw parseErr;
         }
         if (!json.success) {
             const err = new Error(json.error?.message || 'خطای نامشخص');
             err.code = json.error?.code || 'UNKNOWN';
             err.status = res.status;
             err.data = json;
+            err.retryAfter = retryAfter ?? json.error?.retry_after ?? json.data?.retry_after ?? null;
             throw err;
         }
         return json;
@@ -90,8 +99,27 @@ const API = {
         const res = await this.post('/auth/login', { username, password }, { headers: COOKIE_AUTH_HEADERS });
         const data = res.data;
         if (data.requires_2fa) {
-            this._pending2FA = { user_id: data.user_id, username: data.username, email_mask: data.email_mask };
-            return { requires_2fa: true, email_mask: data.email_mask, username: data.username };
+            this._pending2FA = {
+                user_id: data.user_id,
+                username: data.username,
+                role: data.role ?? null,
+                phone_mask: data.phone_mask ?? null,
+                email_mask: data.email_mask ?? null,
+                destination_mask: data.destination_mask ?? data.phone_mask ?? data.email_mask ?? null,
+                channel: data.channel ?? data.two_fa_method ?? 'sms',
+                two_fa_method: data.two_fa_method ?? data.channel ?? 'sms',
+                channel_message: data.channel_message ?? null,
+                channel_message_fa: data.channel_message_fa ?? null,
+                challenge_token: data.challenge_token ?? null,
+                expires_in: data.expires_in ?? null,
+                resend_cooldown_seconds: data.resend_cooldown_seconds ?? 60,
+                sends_used: data.sends_used ?? null,
+                max_sends: data.max_sends ?? null,
+                sends_remaining: data.sends_remaining ?? null,
+                available_channels: Array.isArray(data.available_channels) ? data.available_channels : null,
+                secondary_actions: data.secondary_actions ?? null,
+            };
+            return { requires_2fa: true, ...this._pending2FA };
         }
         this._authenticated = true;
         return { user: data.user };
@@ -103,16 +131,70 @@ const API = {
         return { user: res.data.user };
     },
 
-    async verify2fa(code) {
+    async verify2fa(code, options = {}) {
         if (!this._pending2FA) throw new Error('ابتدا باید وارد شوید');
-        const res = await this.post('/auth/verify-2fa', {
+        const payload = {
             user_id: this._pending2FA.user_id,
             code: String(code)
-        }, { headers: COOKIE_AUTH_HEADERS });
+        };
+        if (this._pending2FA.challenge_token) {
+            payload.challenge_token = this._pending2FA.challenge_token;
+        }
+        if (options && options.method) {
+            payload.method = options.method;
+        }
+        const res = await this.post('/auth/verify-2fa', payload, { headers: COOKIE_AUTH_HEADERS });
         this._pending2FA = null;
         this._authenticated = true;
-        return { user: res.data.user };
+        return {
+            user: res.data.user,
+            auth_method: res.data.auth_method ?? null,
+            remaining_recovery_codes: res.data.remaining_recovery_codes ?? null,
+        };
     },
+
+    async resend2fa() {
+        if (!this._pending2FA) throw new Error('ابتدا باید وارد شوید');
+        const payload = {
+            user_id: this._pending2FA.user_id,
+            challenge_token: this._pending2FA.challenge_token
+        };
+        const res = await this.post('/auth/2fa/resend', payload, { headers: COOKIE_AUTH_HEADERS });
+        const data = res.data || {};
+        this._pending2FA = {
+            ...this._pending2FA,
+            ...data,
+            user_id: data.user_id ?? this._pending2FA.user_id,
+            challenge_token: data.challenge_token ?? this._pending2FA.challenge_token,
+            channel: data.channel ?? data.two_fa_method ?? this._pending2FA.channel,
+            two_fa_method: data.two_fa_method ?? data.channel ?? this._pending2FA.two_fa_method,
+        };
+        return { ...this._pending2FA };
+    },
+
+    async switch2faChannel(channel) {
+        if (!this._pending2FA) throw new Error('ابتدا باید وارد شوید');
+        const payload = {
+            user_id: this._pending2FA.user_id,
+            challenge_token: this._pending2FA.challenge_token,
+            channel
+        };
+        const res = await this.post('/auth/2fa/switch-channel', payload, { headers: COOKIE_AUTH_HEADERS });
+        const data = res.data || {};
+        this._pending2FA = {
+            ...this._pending2FA,
+            ...data,
+            user_id: data.user_id ?? this._pending2FA.user_id,
+            challenge_token: data.challenge_token ?? this._pending2FA.challenge_token,
+            channel: data.channel ?? data.two_fa_method ?? channel,
+            two_fa_method: data.two_fa_method ?? data.channel ?? channel,
+        };
+        return { ...this._pending2FA };
+    },
+
+    getPending2fa() { return this._pending2FA ? { ...this._pending2FA } : null; },
+
+    setPending2fa(challenge) { this._pending2FA = challenge ? { ...challenge } : null; },
 
     is2faPending() { return this._pending2FA !== null; },
 
